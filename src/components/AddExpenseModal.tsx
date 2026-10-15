@@ -1,21 +1,22 @@
+import { LiquidGlassColors, Spacing } from '@/constants/theme';
+import { useExpenses } from '@/context/ExpenseContext';
+import { CATEGORIES, Category, CATEGORY_ICONS } from '@/types/expense';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
+  Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import { Category, CATEGORIES, CATEGORY_ICONS } from '@/types/expense';
-import { LiquidGlassColors, Spacing } from '@/constants/theme';
-import { useExpenses } from '@/context/ExpenseContext';
 
 interface AddExpenseModalProps {
   visible: boolean;
@@ -34,22 +35,31 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [category, setCategory] = useState<Category | null>(null);
   const [description, setDescription] = useState('');
 
-  const handleSubmit = () => {
+  // async porque ahora hay que esperar a que el gasto se guarde en el telefono
+  const handleSubmit = async () => {
     if (!amount || !category) return;
-
-    addExpense({
-      amount: parseFloat(amount),
-      category,
-      date: new Date(),
-      description: description.trim() || undefined,
-    });
-
+ 
+    try {
+      await addExpense({
+        amount: parseFloat(amount),
+        category,
+        date: new Date(),
+        description: description.trim() || undefined,
+      });
+    } catch (error) {
+      // Si no se pudo guardar, se avisa y el modal queda abierto con los datos
+      console.error('Error al guardar el gasto', error);
+      Alert.alert('Error', 'No se pudo guardar el gasto. Intenta de nuevo.');
+      return;
+    }
+ 
     // Reset form
     setAmount('');
     setCategory(null);
     setDescription('');
     onClose();
   };
+
 
   // Igual que al guardar, se limpia el formulario para que no quede texto viejo
   const handleClose = () => {
