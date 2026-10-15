@@ -55,3 +55,10 @@ Todo modal o pantalla con inputs usa `KeyboardAvoidingView` (`'padding'` en iOS,
 - [ ] Gradientes translúcidos sobre cards, paneles con poca opacidad
 - [ ] Colores y espaciado desde `theme.ts`, sin valores sueltos
 - [ ] Inputs: `ScrollView` + `KeyboardAvoidingView`
+
+## Patrones añadidos para gastos
+
+- **Fecha de registro:** los formularios nuevos muestran la fecha con `formatExpenseDate` en un control de solo lectura. En altas se muestra `Hoy · ...`; al editar se conserva la fecha original.
+- **Comprobante:** `ExpenseFormModal` integra `ExpenseImagePicker` como control opcional. El picker administra permisos, cámara/galería, persistencia y eliminación de archivos.
+- **Acciones del item:** `ExpenseItem` acepta handlers de presión y long press. La pantalla muestra un único `Alert` de acciones; eliminar requiere confirmación destructiva y elimina también el comprobante.
+- **Orden por monto:** `SortToggle` usa dos chips glass y mantiene el `SortOrder` en la pantalla. La lista recibe una copia ordenada; los totales se calculan sobre el contexto sin ordenar.

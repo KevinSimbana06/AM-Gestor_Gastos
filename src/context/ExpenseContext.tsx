@@ -1,4 +1,4 @@
-import { getAllExpenses, insertExpense } from '@/database/expenseRepository';
+import { deleteExpense as deleteExpenseFromDatabase, getAllExpenses, insertExpense, updateExpense as updateExpenseInDatabase } from '@/database/expenseRepository';
 import { Expense } from '@/types/expense';
 import { useSQLiteContext } from 'expo-sqlite';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
@@ -10,6 +10,8 @@ interface ExpenseContextType {
   isLoading: boolean;
   // Ahora devuelve una Promise porque guardar en el telefono es asincrono
   addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
+  updateExpense: (expense: Expense) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
   getMonthlyTotal: () => number;
   getCurrentMonthExpenses: () => Expense[];
 }
@@ -61,6 +63,16 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     setExpenses((prev) => [newExpense, ...prev]);
   };
  
+  const updateExpense = async (expense: Expense) => {
+    await updateExpenseInDatabase(db, expense);
+    setExpenses((prev) => prev.map((current) => current.id === expense.id ? expense : current));
+  };
+
+  const deleteExpense = async (id: string) => {
+    await deleteExpenseFromDatabase(db, id);
+    setExpenses((prev) => prev.filter((expense) => expense.id !== id));
+  };
+
   const getCurrentMonthExpenses = () => {
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -88,6 +100,8 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
         expenses,
         isLoading,
         addExpense,
+        updateExpense,
+        deleteExpense,
         getMonthlyTotal,
         getCurrentMonthExpenses,
       }}
@@ -105,4 +119,3 @@ export const useExpenses = () => {
   }
   return context;
 };
-
