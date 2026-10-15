@@ -1,7 +1,8 @@
+import { getAllExpenses, insertExpense } from '@/database/expenseRepository';
 import { Expense } from '@/types/expense';
+import { useSQLiteContext } from 'expo-sqlite';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-//llamo a las funciones
-import { loadExpenses, saveExpenses } from '@/storage/expenseStorage';
+
 
 interface ExpenseContextType {
   expenses: Expense[];
@@ -17,20 +18,23 @@ interface ExpenseContextType {
 const ExpenseContext = createContext<ExpenseContextType | undefined>(undefined);
 
 
-// Fase 2: los gastos se guardan en el telefono con AsyncStorage,
-// asi que siguen ahi despues de cerrar y volver a abrir la app.
+// Fase 3: los gastos se guardan en una base de datos SQLite dentro del telefono.
+// La interfaz del contexto es la misma de la fase 2, por eso las pantallas no cambian.
 export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Conexion a la base que abrio SQLiteProvider en _layout.tsx
+  const db = useSQLiteContext();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
  
-  // Se ejecuta una sola vez, cuando el Provider se monta (al abrir la app)
+  // Se ejecuta al montar el Provider (al abrir la app).
+  // db va en las dependencias porque se usa adentro; no cambia mientras la app esta abierta.
   useEffect(() => {
     const cargarGastos = async () => {
       try {
-        const guardados = await loadExpenses();
+        const guardados = await getAllExpenses(db);
         setExpenses(guardados);
       } catch (error) {
-        // Si el JSON esta corrupto o falla la lectura, la app arranca vacia
+        // Si falla la consulta, la app arranca vacia
         console.error('No se pudieron cargar los gastos', error);
       } finally {
         // Haya funcionado o no, ya terminamos de cargar
@@ -39,7 +43,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
  
     cargarGastos();
-  }, []);
+  }, [db]);
  
   const addExpense = async (expense: Omit<Expense, 'id'>) => {
     // Timestamp + algo aleatorio para que dos gastos seguidos no repitan id
@@ -48,14 +52,13 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
       id: Date.now().toString() + Math.random().toString(36).slice(2, 11),
     };
  
-    // Va al principio para que el ultimo gasto salga arriba
-    const updated = [newExpense, ...expenses];
+    // Primero se inserta en la base y DESPUES se actualiza la pantalla.
+    // Si el INSERT falla, lanza el error y el estado no cambia.
+    // Solo se escribe una fila: ya no hace falta reescribir toda la lista.
+    await insertExpense(db, newExpense);
  
-    // Primero se guarda y DESPUES se actualiza la pantalla.
-    // Si saveExpenses falla, lanza el error y el estado no cambia,
-    // asi la pantalla nunca muestra un gasto que no quedo guardado.
-    await saveExpenses(updated);
-    setExpenses(updated);
+    // Va al principio para que el ultimo gasto salga arriba
+    setExpenses((prev) => [newExpense, ...prev]);
   };
  
   const getCurrentMonthExpenses = () => {
@@ -78,7 +81,6 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
       0
     );
   };
-
 
   return (
     <ExpenseContext.Provider
